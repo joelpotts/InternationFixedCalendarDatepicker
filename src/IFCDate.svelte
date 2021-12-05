@@ -1,5 +1,10 @@
 <script>
+  // TODO: Unselect day on date change, reselect day when month changed back
+  // TODO: Highlight current date on calendar
   export let date;
+  let day = 1;
+  let month = 0;
+  let year = new Date().getFullYear();
   $: daysPerMonth = [
     31,
     isLeapYear(year) ? 29 : 28,
@@ -46,14 +51,7 @@
   ];
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  let day = 1;
-  let month = 0;
-  let year = new Date().getFullYear();
-
-  let gregorianDate = new Date().toISOString().split("T")[0];
-  $: convertedDate = getIFCDate(gregorianDate);
-  $: ifcToGregDate = getGregorianDate(year, month, day);
+  $: ifcDate = `${ifcMonths[month]} ${day}, ${year}`;
 
   function dayOfYear(d) {
     const currentMonth = d.getMonth();
@@ -103,10 +101,10 @@
     let total = 0;
 
     for (const [index, m] of daysPerMonth.entries()) {
-      console.log(total);
       total += m;
       if (doy <= total) {
-        return `${gregMonths[index]} ${doy - (total - m)}, ${year}`;
+        return new Date(year, index, doy - (total - m));
+        // return `${gregMonths[index]} ${doy - (total - m)}, ${year}`;
       }
     }
   }
@@ -131,75 +129,46 @@
     const [y, m, d] = datestring.split("-");
     return new Date(y, parseInt(m) - 1, d);
   }
+
+  function handleDayChange(selectedDay) {
+    day = selectedDay;
+    date = getGregorianDate(year, month, day);
+  }
 </script>
 
-<div id="ifc-to-gregorian">
-  <h1>International Fixed Calendar to Gregorian</h1>
-  <label for="day-input">Day</label>
-  <select id="day-input" bind:value={day}>
-    {#each [...Array((isLeapYear(year) && month === 5) || month === 12 ? 29 : 28).keys()].map((x) => x + 1) as d}
-      <option value={d}>{d}</option>
-    {/each}
-  </select>
-
-  <label for="month-input">Month</label>
-  <select id="month-input" bind:value={month}>
-    {#each ifcMonths as m, index}
-      <option value={index}>{m}</option>
-    {/each}
-  </select>
-
-  <label for="year-input">Day</label>
-  <select id="year-input" bind:value={year}>
-    {#each [...Array(100).keys()].map((x) => x + 2000) as y}
-      <option value={y}>{y}</option>
-    {/each}
-  </select>
-
-  <div id="chosen-date">
-    <p><b>Chosen Date: </b>{ifcMonths[month]} {day}, {year}</p>
-  </div>
-</div>
-
-<div id="gregorian-to-ifc">
-  <h1>Gregorian to IFC</h1>
-  <label for="date-input">Gregorian Date</label>
-  <input type="date" bind:value={gregorianDate} />
-  <p>
-    {convertedDate}
-  </p>
-</div>
-
-{ifcToGregDate}
-
-<div class="ifc-datepicker">
-  <div class="datepicker-banner">
-    <button class="datepicker-button" on:click={decrementMonth}>&lt;</button>
-    <div class="month-year">
-      <p>{ifcMonths[month]}</p>
-      <select id="year-input" bind:value={year}>
-        {#each [...Array(100).keys()].map((x) => x + 2000) as y}
-          <option value={y}>{y}</option>
-        {/each}
-      </select>
+<div class="datepicker-container">
+  <input id="ifc-date-input" value={ifcDate} />
+  <div class="ifc-datepicker">
+    <div class="datepicker-banner">
+      <button class="datepicker-button" on:click={decrementMonth}>&lt;</button>
+      <div class="month-year">
+        <p>{ifcMonths[month]}</p>
+        <select id="year-input" bind:value={year}>
+          {#each [...Array(100).keys()].map((x) => x + 2000) as y}
+            <option value={y}>{y}</option>
+          {/each}
+        </select>
+      </div>
+      <button class="datepicker-button" on:click={incrementMonth}>&gt;</button>
     </div>
-    <button class="datepicker-button" on:click={incrementMonth}>&gt;</button>
-  </div>
 
-  <div class="calendar">
-    {#each daysOfWeek as dow, index}
-      <p class:new-row={index % 7 === 0}>{dow}</p>
-    {/each}
-    {#each [...Array((isLeapYear(year) && month === 5) || month === 12 ? 29 : 28).keys()].map((x) => x + 1) as d, index}
-      <button
-        class="datepicker-button"
-        class:selected={day === d}
-        class:new-row={index % 7 === 0 && d !== 29}
-        on:click={() => (day = d)}
-      >
-        {d}
-      </button>
-    {/each}
+    <div class="calendar">
+      {#each daysOfWeek as dow, index}
+        <p class:new-row={index % 7 === 0}>{dow}</p>
+      {/each}
+      {#each [...Array((isLeapYear(year) && month === 5) || month === 12 ? 29 : 28).keys()].map((x) => x + 1) as d, index}
+        <button
+          class="datepicker-button"
+          class:selected={day === d}
+          class:currentdate={dayOfYear(getGregorianDate(year, month, d)) ===
+            dayOfYear(new Date())}
+          class:new-row={index % 7 === 0 && d !== 29}
+          on:click={() => handleDayChange(d)}
+        >
+          {d}
+        </button>
+      {/each}
+    </div>
   </div>
 </div>
 
@@ -208,6 +177,11 @@
     border: 1px solid black;
     padding: 1em;
     width: 20rem;
+    display: none;
+  }
+
+  .datepicker-container:focus-within .ifc-datepicker {
+    display: block;
   }
 
   .datepicker-banner {
@@ -244,6 +218,10 @@
     background-color: #6200ee;
     border-radius: 50%;
     border: none;
+  }
+
+  .datepicker-button.currentdate {
+    border: 1px solid black;
   }
 
   .datepicker-button:not(.selected):hover {

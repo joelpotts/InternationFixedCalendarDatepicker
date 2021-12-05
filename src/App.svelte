@@ -1,5 +1,9 @@
 <script>
-	import IFCDate from './IFCDate.svelte';
+  import IFCDate from "./IFCDate.svelte";
+
+  let selected = new Date();
 </script>
 
-<IFCDate date={new Date(1988, 5, 17)} />
+<p>{selected}</p>
+
+<IFCDate bind:date={selected} />
