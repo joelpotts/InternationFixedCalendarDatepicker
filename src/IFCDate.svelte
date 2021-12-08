@@ -1,13 +1,14 @@
 <script>
-  // TODO: Unselect day on date change, reselect day when month changed back
-  // TODO: Highlight current date on calendar
+  // TODO: Improve efficiency of comparing IFC date to current date
   export let date;
-  let day = 1;
-  let month = 0;
-  let year = new Date().getFullYear();
+  let selectedDay = 1;
+  let selectedMonth = 0;
+  let selectedYear = date.getFullYear();
+  let activeMonth = selectedMonth;
+  let activeYear = selectedYear;
   $: daysPerMonth = [
     31,
-    isLeapYear(year) ? 29 : 28,
+    isLeapYear(selectedYear) ? 29 : 28,
     31,
     30,
     31,
@@ -25,7 +26,7 @@
     28,
     28,
     28,
-    isLeapYear(year) ? 29 : 28,
+    isLeapYear(selectedYear) ? 29 : 28,
     28,
     28,
     28,
@@ -51,7 +52,7 @@
   ];
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  $: ifcDate = `${ifcMonths[month]} ${day}, ${year}`;
+  $: ifcDate = `${ifcMonths[selectedMonth]} ${selectedDay}, ${selectedYear}`;
 
   function dayOfYear(d) {
     const currentMonth = d.getMonth();
@@ -103,25 +104,25 @@
     for (const [index, m] of daysPerMonth.entries()) {
       total += m;
       if (doy <= total) {
-        return new Date(year, index, doy - (total - m));
-        // return `${gregMonths[index]} ${doy - (total - m)}, ${year}`;
+        return new Date(selectedYear, index, doy - (total - m));
+        // return `${gregMonths[index]} ${doy - (total - m)}, ${selectedYear}`;
       }
     }
   }
 
   function incrementMonth() {
-    month += 1;
-    if (month >= ifcMonths.length) {
-      month = 0;
-      year += 1;
+    activeMonth += 1;
+    if (activeMonth >= ifcMonths.length) {
+      activeMonth = 0;
+      activeYear += 1;
     }
   }
 
   function decrementMonth() {
-    month -= 1;
-    if (month < 0) {
-      month = ifcMonths.length - 1;
-      year -= 1;
+    activeMonth -= 1;
+    if (activeMonth < 0) {
+      activeMonth = ifcMonths.length - 1;
+      activeYear -= 1;
     }
   }
 
@@ -130,9 +131,11 @@
     return new Date(y, parseInt(m) - 1, d);
   }
 
-  function handleDayChange(selectedDay) {
-    day = selectedDay;
-    date = getGregorianDate(year, month, day);
+  function handleDayChange(activeDay) {
+    selectedDay = activeDay;
+    selectedMonth = activeMonth;
+    selectedYear = activeYear;
+    date = getGregorianDate(selectedYear, selectedMonth, selectedDay);
   }
 </script>
 
@@ -142,8 +145,8 @@
     <div class="datepicker-banner">
       <button class="datepicker-button" on:click={decrementMonth}>&lt;</button>
       <div class="month-year">
-        <p>{ifcMonths[month]}</p>
-        <select id="year-input" bind:value={year}>
+        <p>{ifcMonths[activeMonth]}</p>
+        <select id="year-input" bind:value={activeYear}>
           {#each [...Array(100).keys()].map((x) => x + 2000) as y}
             <option value={y}>{y}</option>
           {/each}
@@ -156,12 +159,15 @@
       {#each daysOfWeek as dow, index}
         <p class:new-row={index % 7 === 0}>{dow}</p>
       {/each}
-      {#each [...Array((isLeapYear(year) && month === 5) || month === 12 ? 29 : 28).keys()].map((x) => x + 1) as d, index}
+      {#each [...Array((isLeapYear(activeYear) && activeMonth === 5) || activeMonth === 12 ? 29 : 28).keys()].map((x) => x + 1) as d, index}
         <button
           class="datepicker-button"
-          class:selected={day === d}
-          class:currentdate={dayOfYear(getGregorianDate(year, month, d)) ===
-            dayOfYear(new Date())}
+          class:selected={activeYear === selectedYear &&
+            activeMonth === selectedMonth &&
+            selectedDay === d}
+          class:currentdate={dayOfYear(
+            getGregorianDate(activeYear, activeMonth, d)
+          ) === dayOfYear(new Date())}
           class:new-row={index % 7 === 0 && d !== 29}
           on:click={() => handleDayChange(d)}
         >
